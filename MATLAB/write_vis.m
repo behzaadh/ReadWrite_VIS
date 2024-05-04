@@ -1,5 +1,5 @@
 %function out = read_vis(filename,startIdx,cellSize)
-function out = read_vis(filename)
+function out = write_vis(filename, updatedKeyword, dataIn)
 
 T_SPEC_filename = strrep(filename, '.VIS_T', '.VIS_TSPEC_');
 % Open the file for reading
@@ -19,15 +19,27 @@ fclose(fileID);
 names = data{1};
 values = data{2};
 
+isUpdatedKeyworkAvailable = false;
+for i = 1:numel(names)
+    if strcmp(names{i}, updatedKeyword)
+        isUpdatedKeyworkAvailable = true;
+    end
+end
+
+if ~isUpdatedKeyworkAvailable 
+    error('The updated keyword does not exist in T files!'); 
+end
+
 out = [];
 
 if ~exist('filename', 'var')
-    error(['''' filename ''' does not exist']); end
+    error(['''' filename ''' does not exist']); 
+end
 
 % Open file
 fclose all;
 
-fid = fopen(filename);
+fid = fopen(filename,'r+');
 if fid < 3; error 'Error while opening VIS_T file'; end
 
 % Display the names and values
@@ -36,50 +48,27 @@ for i = 1:numel(names)
     %disp([names{i}, ': ', num2str(values(i))]);
     fseek(fid, values(i)-1,'bof');
     keyword = deblank(fread(fid, 50, 'uint8=>char')');
-    dtype   = deblank(fread(fid, 11, 'uint8=>char')');
-    variable    = deblank(fread(fid, 11, 'uint8=>char')');
-    VariableType = deblank(fread(fid, 11, 'uint8=>char')');
-    bb = fread(fid, 1, 'int32=>double')';
-    if (strcmp(keyword,'END'))
-        break;
-    else
-        cellSize = values(i+1)-values(i)-87;
+    if ~strcmp(keyword, updatedKeyword)
+        continue;
     end
+    dtype   = deblank(fread(fid, 11, 'uint8=>char')');
+
     switch dtype
         case 'Integer'
             conv =  'int32=>double';
-            wsize = 4;
         case 'Real'
             conv = 'single=>double';
-            wsize = 4;
         case 'Double'
             conv = 'double';
-            wsize = 8;
         case 'Logic'
             conv = 'int32';
-            wsize = 4;
         case 'String'
             conv = 'uint8=>char';
-            wsize = 1;
     end
-    
-    data = fread(fid, cellSize/wsize, conv, 0, 'b');
 
-    % Add array to struct. If keyword already exists, append data.
-    if isfield(out, keyword)
+    fseek(fid, values(i)-1+50+33+4,'bof');
+    fwrite(fid, dataIn, conv, 0, 'b');
 
-    else
-        out.(keyword).('Data_type') = dtype;
-        out.(keyword).('Variable_class') = variable;
-        out.(keyword).('Variable_type') = VariableType;
-        if strcmp(dtype, 'String')
-            data = string(data');
-        end
-        if strcmp(VariableType,'GaussPoint')
-            data = reshape(data,[size(data,1)/8, 8]);
-        end
-        out.(keyword).('Data') = data;
-    end
 end
 
 fclose(fid);
