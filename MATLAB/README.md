@@ -1,5 +1,3 @@
-# Read_VIS
-Read binary restart files (T files) from SLB's geomechanics simulators Visage.
 # MATLAB Code Documentation
 
 This MATLAB code consists of functions for reading and writing to/from Visage restart files (`.VIS_T`). These functions are designed to manipulate data stored in these files.
